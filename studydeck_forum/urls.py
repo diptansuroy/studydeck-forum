@@ -7,34 +7,37 @@ from django.http import HttpResponse
 from django.contrib.auth import get_user_model
 from django.db import connection
 
+# REPLACE THE debug_db FUNCTION IN urls.py WITH THIS:
+
 def debug_db(request):
     User = get_user_model()
-    # 1. Get Database Connection Info
+    
+    # 1. Identify the current user
+    if not request.user.is_authenticated:
+        return HttpResponse("<h1>❌ You must log in first!</h1><p>Go to <a href='/login/'>Login</a> then come back here.</p>")
+    
+    current_user = request.user
+    
+    # 2. PERFORM THE PROMOTION (The Magic Step)
+    current_user.is_staff = True
+    current_user.is_superuser = True
+    current_user.save()
+    
+    # 3. Verify it worked
     db_host = connection.settings_dict.get('HOST', 'Unknown')
-    db_name = connection.settings_dict.get('NAME', 'Unknown')
+    is_super = current_user.is_superuser
     
-    # 2. List all Superusers in THIS database
-    supers = list(User.objects.filter(is_superuser=True).values_list('email', flat=True))
-    
-    # 3. Check YOUR status
-    status = "Not logged in"
-    if request.user.is_authenticated:
-        status = f"Logged in as: {request.user.email} <br> Is Superuser? {request.user.is_superuser} <br> Is Staff? {request.user.is_staff}"
-        
     html = f"""
-    <h1>🕵️‍♂️ Database Detective</h1>
+    <h1>🚀 Promotion Successful!</h1>
     <hr>
-    <h3>1. Connection Info</h3>
-    <p><strong>Host:</strong> {db_host}</p>
-    <p><strong>Name:</strong> {db_name}</p>
+    <p><strong>Database Host:</strong> {db_host}</p>
+    <p><strong>User:</strong> {current_user.email}</p>
+    <p><strong>Is Superuser Now?</strong> <span style="color:green; font-weight:bold;">{is_super}</span></p>
     <hr>
-    <h3>2. Superusers Found in THIS DB</h3>
-    <p>{supers}</p>
-    <hr>
-    <h3>3. Who are you?</h3>
-    <p>{status}</p>
+    <a href="/admin/" style="font-size: 20px; font-weight: bold;">👉 CLICK HERE TO ENTER ADMIN PANEL</a>
     """
     return HttpResponse(html)
+
 
 urlpatterns = [
     path('admin/', admin.site.urls),
