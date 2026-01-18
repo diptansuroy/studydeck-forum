@@ -1,5 +1,4 @@
-# COMPLETE SERIALIZERS - NO DISCUSSION
-# Copy entire file to core/serializers.py
+
 
 from rest_framework import serializers
 from .models import (
@@ -15,8 +14,6 @@ from .models import (
     Report,
 )
 
-
-# ===== PHASE 1 SERIALIZERS (KEEP) =====
 
 class CustomUserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -57,7 +54,6 @@ class ResourceRatingSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at']
 
 
-# ===== PHASE 3 SERIALIZERS (NEW - NO DISCUSSION) =====
 
 class CategorySerializer(serializers.ModelSerializer):
     thread_count = serializers.SerializerMethodField()
