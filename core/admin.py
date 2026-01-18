@@ -1,5 +1,3 @@
-# COMPLETE ADMIN - NO DISCUSSION
-# Copy entire file to core/admin.py
 
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
@@ -19,7 +17,7 @@ from .models import (
 )
 
 
-# ===== PHASE 1 ADMIN (KEEP) =====
+
 
 @admin.register(CustomUser)
 class CustomUserAdmin(UserAdmin):
@@ -57,7 +55,7 @@ class ResourceRatingAdmin(admin.ModelAdmin):
     ordering = ['-created_at']
 
 
-# ===== PHASE 3 ADMIN (NEW - NO DISCUSSION) =====
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
