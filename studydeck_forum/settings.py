@@ -1,4 +1,3 @@
-
 import os
 from pathlib import Path
 from datetime import timedelta
@@ -6,11 +5,13 @@ import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'django-insecure-change-this-to-a-secure-random-key'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-change-this-to-a-secure-random-key')
 
+# Set DEBUG to False in production if possible, but True is okay for testing
 DEBUG = True
 
-ALLOWED_HOSTS = []
+# Allow Render domains
+ALLOWED_HOSTS = ['*']
 
 # Application definition
 INSTALLED_APPS = [
@@ -33,11 +34,11 @@ INSTALLED_APPS = [
     'allauth.socialaccount.providers.google',
     
     'core',
-    # Local
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware', 
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware', 
     'django.middleware.common.CommonMiddleware',
@@ -68,16 +69,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'studydeck_forum.wsgi.application'
 
-
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'studydeck',       # This must match the DB ig
-        'USER': 'postgres',        
-        'PASSWORD': 'password',   
-        'HOST': 'localhost',
-        'PORT': '5432',
-    }
+    'default': dj_database_url.config(
+        default='sqlite:///db.sqlite3',
+        conn_max_age=600
+    )
 }
 
 # --- AUTHENTICATION ---
@@ -85,7 +81,7 @@ AUTH_USER_MODEL = 'core.CustomUser'
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',  # Manual Login
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ),
     'DEFAULT_THROTTLE_CLASSES': [
@@ -121,13 +117,17 @@ TIME_ZONE = 'UTC'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
-STATIC_URL = 'static/'
+# --- STATIC FILES CONFIGURATION (FIXED FOR RENDER) ---
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'static'),
 ]
+
+# Whitenoise Storage for serving files in production
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
@@ -146,7 +146,6 @@ SOCIALACCOUNT_PROVIDERS = {
         ],
         'AUTH_PARAMS': {
             'access_type': 'online',
-            
             'hd': 'pilani.bits-pilani.ac.in', 
         }
     }
@@ -164,11 +163,5 @@ ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 SOCIALACCOUNT_LOGIN_ON_GET = True
 
-SITE_ID = 1 
-
-LOGIN_REDIRECT_URL = '/forum/'
-LOGOUT_REDIRECT_URL = '/login/'
-SOCIALACCOUNT_LOGIN_ON_GET = True
 SOCIALACCOUNT_ADAPTER = 'core.adapters.CustomSocialAccountAdapter'
-
 ALLOWED_SIGNUP_DOMAIN = 'pilani.bits-pilani.ac.in'
