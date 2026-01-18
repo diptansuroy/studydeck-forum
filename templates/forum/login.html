@@ -1,0 +1,78 @@
+{% load socialaccount %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - StudyDeck</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; display: flex; align-items: center; justify-content: center; height: 100vh; }
+        .login-card { width: 100%; max-width: 400px; padding: 2rem; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white; }
+        .btn-google { background-color: #db4437; color: white; }
+        .btn-google:hover { background-color: #c53929; color: white; }
+    </style>
+</head>
+<body>
+
+<div class="login-card text-center">
+    <h3 class="mb-4 text-primary"><i class="fas fa-graduation-cap"></i> StudyDeck</h3>
+    
+    <div class="d-grid mb-3">
+        <a href="{% provider_login_url 'google' %}" class="btn btn-google btn-lg">
+            <i class="fab fa-google me-2"></i> Continue with Google
+        </a>
+    </div>
+
+    <div class="text-muted mb-3">- OR -</div>
+
+    <form id="loginForm">
+        <div class="mb-3 text-start">
+            <label class="form-label">Email Address</label>
+            <input type="email" id="email" class="form-control" required>
+        </div>
+        <div class="mb-3 text-start">
+            <label class="form-label">Password</label>
+            <input type="password" id="password" class="form-control" required>
+        </div>
+        <div class="d-grid">
+            <button type="submit" class="btn btn-primary btn-lg">Login</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    // Keep your existing Javascript login logic here...
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        
+        try {
+            const res = await fetch('/api/token/', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email, password})
+            });
+            const data = await res.json();
+            if(res.ok) {
+                localStorage.setItem('access_token', data.access);
+                localStorage.setItem('refresh_token', data.refresh);
+                
+                // Fetch user role for redirection
+                const meRes = await fetch('/api/me/', {
+                    headers: {'Authorization': `Bearer ${data.access}`}
+                });
+                const user = await meRes.json();
+                localStorage.setItem('user_role', user.role);
+                
+                window.location.href = '/forum/';
+            } else {
+                alert("Login Failed: " + JSON.stringify(data));
+            }
+        } catch(err) { console.error(err); alert("Network Error"); }
+    });
+</script>
+
+</body>
+</html>

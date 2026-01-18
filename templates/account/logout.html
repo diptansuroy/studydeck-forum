@@ -1,0 +1,35 @@
+{% extends "forum/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center" style="margin-top: 100px;">
+    <div class="col-md-5 col-lg-4">
+        <div class="card shadow-lg border-0 rounded-3">
+            <div class="card-body text-center p-5">
+                
+                <div class="mb-4">
+                    <span class="fa-stack fa-2x text-danger">
+                        <i class="fas fa-circle fa-stack-2x opacity-25"></i>
+                        <i class="fas fa-sign-out-alt fa-stack-1x"></i>
+                    </span>
+                </div>
+
+                <h3 class="mb-3 fw-bold">Sign Out?</h3>
+                <p class="text-muted mb-4">Are you sure you want to log out of your account?</p>
+
+                <form method="post" action="{% url 'account_logout' %}">
+                    {% csrf_token %}
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-danger btn-lg shadow-sm">
+                            Yes, Sign Out
+                        </button>
+                        <a href="/forum/" class="btn btn-light btn-lg text-muted">
+                            Cancel
+                        </a>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

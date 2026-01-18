@@ -1,0 +1,244 @@
+{% extends 'forum/base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0 text-primary"><i class="fas fa-comments"></i> Recent Discussions</h2>
+    <a href="/forum/create/" class="btn btn-primary shadow-sm">
+        <i class="fas fa-plus-circle"></i> Start Discussion
+    </a>
+</div>
+
+<div id="filter-status" class="mb-3 d-none">
+    <span class="badge bg-secondary p-2 pointer" onclick="window.location.href='/forum/'" style="cursor: pointer;">
+        <i class="fas fa-times me-1"></i> Clear Filter: <span id="filter-name"></span>
+    </span>
+</div>
+
+<div class="card mb-4 shadow-sm border-0">
+    <div class="card-body">
+        <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="searchInput" class="form-control border-start-0" placeholder="Search topics..." onkeyup="if(event.key==='Enter') fetchThreads()">
+            <button class="btn btn-primary" onclick="fetchThreads()">Search</button>
+        </div>
+    </div>
+</div>
+
+<div id="loader" class="text-center py-5">
+    <div class="spinner-border text-primary" role="status"></div>
+    <p class="text-muted mt-2">Loading discussions...</p>
+</div>
+
+<div id="error-alert" class="alert alert-danger d-none">
+    <strong>Error:</strong> <span id="error-msg"></span>
+</div>
+
+<div id="thread-list" class="d-none"></div>
+
+<div class="d-flex justify-content-center mt-4">
+    <button id="prev-btn" class="btn btn-outline-primary me-2 d-none" onclick="changePage(-1)">Previous</button>
+    <button id="next-btn" class="btn btn-outline-primary d-none" onclick="changePage(1)">Next</button>
+</div>
+
+<script>
+    console.log("🚀 INDEX SCRIPT LOADED");
+    const THREADS_URL = '/api/threads/';
+    let currentPage = 1;
+
+    // 1. FETCH LOGIC (With Filters)
+    window.fetchThreads = async function(page = 1) {
+        currentPage = page;
+        const loader = document.getElementById('loader');
+        const list = document.getElementById('thread-list');
+        const errorAlert = document.getElementById('error-alert');
+
+        loader.classList.remove('d-none');
+        list.classList.add('d-none');
+        errorAlert.classList.add('d-none');
+
+        try {
+            // Get Filters from URL (e.g. ?tag=python)
+            const urlParams = new URLSearchParams(window.location.search);
+            const tag = urlParams.get('tag');
+            const category = urlParams.get('category');
+            const query = document.getElementById('searchInput').value;
+
+            // Show active filter badge
+            const filterBadge = document.getElementById('filter-status');
+            const filterName = document.getElementById('filter-name');
+            
+            if (tag) {
+                filterBadge.classList.remove('d-none');
+                filterName.textContent = `Tag: ${tag}`;
+            } else if (category) {
+                filterBadge.classList.remove('d-none');
+                filterName.textContent = `Category: ${category}`;
+            } else {
+                filterBadge.classList.add('d-none');
+            }
+
+            // Build API URL
+            let fullUrl = `${THREADS_URL}?page=${page}&q=${encodeURIComponent(query)}`;
+            if (tag) fullUrl += `&tag=${encodeURIComponent(tag)}`; // API expects 'tag' (slug)
+            if (category) fullUrl += `&category=${encodeURIComponent(category)}`; // API expects 'category' (slug)
+
+            const res = await fetch(fullUrl, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': localStorage.getItem('access_token') ? 'Bearer ' + localStorage.getItem('access_token') : ''
+                }
+            });
+
+            if (!res.ok) throw new Error("Failed to load threads");
+
+            const data = await res.json();
+            renderThreads(data.results || []);
+            handlePagination(data.next, data.previous);
+
+        } catch (err) {
+            console.error(err);
+            loader.classList.add('d-none');
+            errorAlert.classList.remove('d-none');
+            document.getElementById('error-msg').textContent = err.message;
+        }
+    };
+
+    // 2. RENDER LOGIC
+    function renderThreads(threads) {
+        const loader = document.getElementById('loader');
+        const list = document.getElementById('thread-list');
+        
+        loader.classList.add('d-none');
+        list.classList.remove('d-none');
+        list.innerHTML = '';
+
+        if (threads.length === 0) {
+            list.innerHTML = `<div class="text-center py-5 text-muted"><h5>No discussions found matching your criteria.</h5></div>`;
+            return;
+        }
+
+        threads.forEach(t => {
+            const date = new Date(t.created_at).toLocaleDateString();
+            
+            // CATEGORY
+            const categoryHtml = t.category_name 
+                ? `<span class="badge bg-info text-dark me-2 pointer" onclick="event.stopPropagation(); window.location.href='/forum/?category=${t.category}'">${t.category_name}</span>`
+                : `<span class="badge bg-secondary me-2">General</span>`;
+
+            // TAGS - LOGIC FIX
+            let tagsHtml = '';
+            if (t.tags && t.tags.length > 0) {
+                tagsHtml = t.tags.map(tag => 
+                    `<span class="badge bg-light text-dark border me-1 pointer" onclick="event.stopPropagation(); window.location.href='/forum/?tag=${tag.slug}'">#${tag.name}</span>`
+                ).join('');
+            } else {
+                // Debugging helper: Show if tags are missing
+                // tagsHtml = '<span class="text-muted small fst-italic">No tags</span>';
+            }
+
+            let contentHtml = t.content;
+            if (typeof marked !== 'undefined') contentHtml = marked.parse(t.content);
+
+            const lock = t.is_locked ? '<i class="fas fa-lock text-danger ms-2"></i>' : '';
+            const pin = t.is_pinned ? '<i class="fas fa-thumbtack text-warning me-2"></i>' : '';
+            const heartIcon = t.user_liked ? 'fas text-danger' : 'far text-muted';
+            
+            list.innerHTML += `
+            <div class="card mb-3 shadow-sm thread-card" onclick="window.location.href='/thread/${t.id}/'" style="cursor: pointer;">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <h5 class="card-title text-primary mb-1">${pin} ${t.title} ${lock}</h5>
+                        <small class="text-muted text-nowrap">${date}</small>
+                    </div>
+
+                    <div class="mb-2">
+                        ${categoryHtml}
+                        <span class="text-muted small">Posted by <strong>${t.author_email}</strong></span>
+                    </div>
+                    
+                    <div class="card-text text-secondary mb-3" style="max-height: 100px; overflow: hidden; position: relative;">
+                        ${contentHtml}
+                        <div style="position: absolute; bottom: 0; left: 0; width: 100%; height: 25px; background: linear-gradient(transparent, white);"></div>
+                    </div>
+
+                    <div class="d-flex align-items-center justify-content-between mt-3">
+                        <div class="d-flex align-items-center gap-4">
+                            <button class="btn btn-link p-0 text-decoration-none fs-5" onclick="toggleLike(event, ${t.id}, this)">
+                                <i class="${heartIcon} fa-heart"></i> 
+                                <span class="text-dark ms-1" style="font-weight: 500;">${t.like_count}</span>
+                            </button>
+                            <div class="text-muted fs-5">
+                                <i class="far fa-comment"></i> 
+                                <span class="ms-1" style="font-weight: 500;">${t.reply_count}</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex flex-wrap justify-content-end ms-3">
+                            ${tagsHtml}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        });
+    }
+
+    // 3. PAGINATION & LIKES
+    function handlePagination(next, prev) {
+        document.getElementById('next-btn').classList.toggle('d-none', !next);
+        document.getElementById('prev-btn').classList.toggle('d-none', !prev);
+    }
+    
+    function changePage(delta) {
+        fetchThreads(currentPage + delta);
+    }
+
+    async function toggleLike(event, threadId, btn) {
+        event.stopPropagation();
+        try {
+            const token = localStorage.getItem('access_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            // CSRF for Google/Session users
+            const csrfToken = getCookie('csrftoken');
+            if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+            const res = await fetch(`/api/threads/${threadId}/like/`, { 
+                method: 'POST', headers, credentials: 'include' 
+            });
+
+            if (res.ok) {
+                const icon = btn.querySelector('i');
+                const countSpan = btn.querySelector('span');
+                let count = parseInt(countSpan.textContent);
+                if (icon.classList.contains('fas')) {
+                    icon.classList.replace('fas', 'far');
+                    icon.classList.replace('text-danger', 'text-muted');
+                    countSpan.textContent = Math.max(0, count - 1);
+                } else {
+                    icon.classList.replace('far', 'fas');
+                    icon.classList.replace('text-muted', 'text-danger');
+                    countSpan.textContent = count + 1;
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    fetchThreads();
+</script>
+{% endblock %}

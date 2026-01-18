@@ -1,0 +1,173 @@
+{% extends 'forum/base.html' %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="fas fa-pen"></i> Start a New Discussion</h4>
+            </div>
+            <div class="card-body p-4">
+                
+                <form id="createThreadForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Thread Title</label>
+                        <input type="text" id="title" class="form-control" placeholder="e.g., Question about Lecture 5..." required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Category</label>
+                        <select id="category" class="form-select" required>
+                            <option value="">Loading categories...</option>
+                        </select>
+                        <div class="form-text">Choose the topic that best fits your question.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tags <small class="text-muted fw-normal">(Select all that apply)</small></label>
+                        <div id="tags-container" class="d-flex flex-wrap gap-2 border p-3 rounded bg-light">
+                            <small class="text-muted">Loading tags...</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Content</label>
+                        <textarea id="contentField" class="form-control" rows="8" placeholder="Describe your question or discussion topic in detail... Markdown is supported." required></textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <a href="/forum/" class="btn btn-outline-secondary">Cancel</a>
+                        <button type="submit" class="btn btn-primary px-4">Create Thread</button>
+                    </div>
+                </form>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Define API Root safely
+    const API_ROOT = '/api';
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        await loadDropdowns();
+    });
+
+    async function loadDropdowns() {
+        // 1. Load Categories
+        try {
+            const catRes = await fetch(`${API_ROOT}/categories/`);
+            const catData = await catRes.json();
+            const catSelect = document.getElementById('category');
+            
+            catSelect.innerHTML = '<option value="">Select a Category</option>';
+            if (catData.results && catData.results.length > 0) {
+                catData.results.forEach(c => {
+                    catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+                });
+            } else {
+                catSelect.innerHTML = '<option value="">No categories available</option>';
+            }
+        } catch (e) {
+            console.error("Error loading categories:", e);
+        }
+
+        // 2. Load Tags (as Checkboxes)
+        try {
+            const tagRes = await fetch(`${API_ROOT}/tags/`);
+            const tagData = await tagRes.json();
+            const tagContainer = document.getElementById('tags-container');
+            tagContainer.innerHTML = ''; // Clear "Loading..." text
+
+            if (!tagData.results || tagData.results.length === 0) {
+                tagContainer.innerHTML = '<small class="text-muted">No tags available.</small>';
+            } else {
+                tagData.results.forEach(tag => {
+                    // Create Checkbox HTML
+                    const checkboxHtml = `
+                        <div class="form-check me-3">
+                            <input class="form-check-input" type="checkbox" value="${tag.id}" id="tag-${tag.id}" name="thread_tags">
+                            <label class="form-check-label user-select-none" for="tag-${tag.id}" style="cursor:pointer;">
+                                <span class="badge bg-light text-dark border">#${tag.name}</span>
+                            </label>
+                        </div>
+                    `;
+                    tagContainer.insertAdjacentHTML('beforeend', checkboxHtml);
+                });
+            }
+        } catch (e) {
+            console.error("Error loading tags:", e);
+            document.getElementById('tags-container').innerHTML = '<small class="text-danger">Failed to load tags</small>';
+        }
+    }
+
+    // 3. Handle Form Submit
+    document.getElementById('createThreadForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const title = document.getElementById('title').value;
+        const content = document.getElementById('contentField').value;
+        const category = document.getElementById('category').value;
+        
+        // --- LOGIC FIX: Extract selected checkbox values ---
+        const selectedCheckboxes = document.querySelectorAll('input[name="thread_tags"]:checked');
+        const tags = Array.from(selectedCheckboxes).map(cb => parseInt(cb.value));
+
+        if (!category) return alert("Please select a category");
+
+        const payload = { title, content, category, tags };
+        console.log("Submitting Payload:", payload);
+
+        try {
+            const token = localStorage.getItem('access_token');
+            const headers = { 'Content-Type': 'application/json' };
+            
+            // Add Authorization headers
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            
+            const csrfToken = getCookie('csrftoken');
+            if (csrfToken) headers['X-CSRFToken'] = csrfToken;
+
+            const res = await fetch(`${API_ROOT}/threads/create/`, {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(payload),
+                credentials: 'include'
+            });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                // Success: Redirect to new thread
+                window.location.href = `/thread/${data.id}/`;
+            } else {
+                console.error("Server Error:", data);
+                alert("Error creating thread: " + JSON.stringify(data));
+            }
+
+        } catch (error) {
+            console.error(error);
+            alert("Network error. Please try again.");
+        }
+    });
+
+    // Helper to get CSRF Token (Essential for Google/Session Login)
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+</script>
+{% endblock %}
