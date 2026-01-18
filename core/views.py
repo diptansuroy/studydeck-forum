@@ -1,5 +1,4 @@
-# COMPLETE VIEWS - NO DISCUSSION
-# Copy entire file to core/views.py
+
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -38,8 +37,6 @@ from .serializers import (
     ReportUpdateSerializer,
 )
 
-
-# ===== PHASE 1 VIEWS (KEEP) =====
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -134,7 +131,6 @@ def increment_view_count(request, id):
     return Response({'view_count': resource.view_count})
 
 
-# ===== PHASE 3 VIEWS (NEW - NO DISCUSSION) =====
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
