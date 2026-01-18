@@ -1,5 +1,3 @@
-# COMPLETE DJANGO MODELS - NO DISCUSSION
-# Copy entire file to core/models.py
 
 from django.contrib.auth.models import AbstractUser
 from django.db import models
@@ -7,7 +5,6 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
 
 
-# ===== EXISTING PHASE 1 MODELS (KEEP) =====
 
 class CustomUser(AbstractUser):
     """Custom user model with roles"""
@@ -112,8 +109,6 @@ class ResourceRating(models.Model):
     def __str__(self):
         return f"{self.resource.title} - {self.rating}★ by {self.user.email}"
 
-
-# ===== PHASE 3 FORUM MODELS (NEW) =====
 
 class Category(models.Model):
     """Forum Categories"""
