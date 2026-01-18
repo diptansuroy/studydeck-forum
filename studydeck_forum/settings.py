@@ -165,3 +165,6 @@ SOCIALACCOUNT_LOGIN_ON_GET = True
 
 SOCIALACCOUNT_ADAPTER = 'core.adapters.CustomSocialAccountAdapter'
 ALLOWED_SIGNUP_DOMAIN = 'pilani.bits-pilani.ac.in'
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+CSRF_TRUSTED_ORIGINS = ['https://studydeck-forum-2r1n.onrender.com']
+SESSION_COOKIE_DOMAIN = None
